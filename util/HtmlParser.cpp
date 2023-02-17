@@ -33,7 +33,10 @@ void search_for_links(GumboNode* node, std::string& links, int& nLinks, std::str
 
 char* HtmlParser::Parse(char *htmlCode, int codeSize, char *baseUrl, int urlLen, int *nLinks) {
     GumboInternalOutput* output = gumbo_parse(htmlCode);
-    std::string baseUrlStr = std::string(baseUrl);
+    std::string baseUrlStr;
+    if (baseUrl != nullptr) {
+        baseUrlStr = std::string(baseUrl);
+    }
     std::string links;
     int count = 0;
     search_for_links(output->root, links, count, baseUrlStr);

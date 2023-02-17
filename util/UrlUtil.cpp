@@ -2,6 +2,7 @@
 // Created by Adil Rasiyani on 2/8/23.
 //
 #include "UrlUtil.h"
+#include "HtmlParser.h"
 #include <string>
 
 std::string UrlUtil::buildAbsoluteUrl(char* baseUrl, int urlLen, char* relPath, int relPathLen) {
@@ -14,7 +15,7 @@ std::string UrlUtil::buildAbsoluteUrl(char* baseUrl, int urlLen, char* relPath, 
     return base;
 }
 
-std::string UrlUtil::getScheme(std::string& url) {
+std::string UrlUtil::getScheme(const std::string& url) {
     if (url.find("://") == std::string::npos) {
         return "";
     }
@@ -28,7 +29,7 @@ std::string UrlUtil::getScheme(std::string& url) {
     return scheme;
 }
 
-std::string UrlUtil::getHost(std::string& url, size_t known_scheme_length) {
+std::string UrlUtil::getHost(const std::string& url, size_t known_scheme_length) {
     if (known_scheme_length == 0) {
         known_scheme_length = UrlUtil::getScheme(url).size();
     }
@@ -49,7 +50,7 @@ std::string UrlUtil::getHost(std::string& url, size_t known_scheme_length) {
     return host;
 }
 
-std::string UrlUtil::getPort(std::string& url, size_t known_colon_index) {
+std::string UrlUtil::getPort(const std::string& url, size_t known_colon_index) {
     std::string port;
 
     if (known_colon_index == 0) {
@@ -72,7 +73,7 @@ std::string UrlUtil::getPort(std::string& url, size_t known_colon_index) {
     return port;
 }
 
-std::string UrlUtil::getPath(std::string& url, size_t known_path_divider_index) {
+std::string UrlUtil::getPath(const std::string& url, size_t known_path_divider_index) {
     if (known_path_divider_index == 0) {
         // TODO: find the divider (scheme, then host, optional port, divider)
     }
@@ -89,7 +90,7 @@ std::string UrlUtil::getPath(std::string& url, size_t known_path_divider_index) 
     return path;
 }
 
-std::string UrlUtil::getQuery(std::string& url) {
+std::string UrlUtil::getQuery(const std::string& url) {
     size_t query_divider = 0;
     for(size_t i = 0; i < url.size(); i++) {
         if (url[i] == '?') {
@@ -109,7 +110,7 @@ std::string UrlUtil::getQuery(std::string& url) {
     return query;
 }
 
-std::string UrlUtil::getFragment(std::string& url) {
+std::string UrlUtil::getFragment(const std::string& url) {
     size_t fragment_divider = 0;
     for (size_t i = 0; i < url.size(); i++) {
         if (url[i] == '#') {
@@ -127,7 +128,7 @@ std::string UrlUtil::getFragment(std::string& url) {
     return fragment;
 }
 
-bool UrlUtil::isHttpUrl(std::string& url) {
+bool UrlUtil::isHttpUrl(const std::string& url) {
     std::string scheme = UrlUtil::getScheme(url);
     if (scheme != "http") {
         return false;
@@ -135,7 +136,24 @@ bool UrlUtil::isHttpUrl(std::string& url) {
     return true;
 }
 
-UrlParts UrlUtil::parseUrl(std::string& url) {
+bool UrlUtil::isValidPort(const std::string& port) {
+    std::string MAX_PORT_NUM("65535");
+    if (port.size() > MAX_PORT_NUM.size()) {
+        return false;
+    }
+    for(char c : port) {
+        if (c > '9' or c < '0') {
+            return false;
+        }
+    }
+    if (std::stoi(port) <= 0 or std::stoi(port) > std::stoi(MAX_PORT_NUM)) {
+        return false;
+    }
+
+    return true;
+}
+
+UrlParts UrlUtil::parseUrl(const std::string& url) {
     UrlParts parsedUrl;
 
     // --- SCHEME --- //
@@ -162,5 +180,38 @@ UrlParts UrlUtil::parseUrl(std::string& url) {
     // --- FRAGMENT --- //
     parsedUrl.fragment = UrlUtil::getFragment(url);
 
+    parsedUrl.request = "/";
+    if (not parsedUrl.path.empty()) {
+        parsedUrl.request += parsedUrl.path;
+    }
+    if (not parsedUrl.query.empty()) {
+        parsedUrl.request += "?";
+        parsedUrl.request += parsedUrl.query;
+    }
+    if (not parsedUrl.fragment.empty()) {
+        parsedUrl.request += "#";
+        parsedUrl.request += parsedUrl.fragment;
+    }
+
     return parsedUrl;
+}
+
+int UrlUtil::testUrlValidity(const std::string &url) {
+    if (url.size() > MAX_URL_LEN) {
+        return false;
+    }
+    if (not isHttpUrl(url)) {
+        return UNACCEPTABLE_SCHEME;
+    }
+
+    UrlParts parts = parseUrl(url);
+    if (parts.host.size() > MAX_HOST_LEN) {
+        return false;
+    }
+
+    if (not parts.port.empty() and not isValidPort(parts.port)) {
+        return INVALID_PORT;
+    }
+
+    return VALID_URL;
 }

@@ -14,7 +14,8 @@ const std::map<std::string, UrlParts> TEST_URLS {
         {"http://relay.tamu.edu:465/index.html", UrlParts("http", "relay.tamu.edu", "465", "index.html", "", "")},
         {"http://ftp.gnu.org:21/", UrlParts("http", "ftp.gnu.org", "21", "", "", "")},
         {"http://s22.irl.cs.tamu.edu:990/view?test=1", UrlParts("http", "s22.irl.cs.tamu.edu", "990", "view", "test=1", "")},
-        {"http://128.194.135.25?viewcart.php/", UrlParts("http", "128.194.135.25", "", "", "viewcart.php/", "")}
+        {"http://128.194.135.25?viewcart.php/", UrlParts("http", "128.194.135.25", "", "", "viewcart.php/", "")},
+        {"http://xyz.com:/", UrlParts("http", "xyz.com", "", "", "", "")}
 };
 
 const std::string TEST_BASE_URL = "https://www.test.com:80";
@@ -83,4 +84,41 @@ TEST(AbsolutePathBuilder, NoSlashes) {
             );
 
     ASSERT_EQ(response, EXPECTED_ABSOLUTE_PATH);
+}
+
+TEST(IsValidPort, NegativePort) {
+    std::ostringstream numBuilder;
+    numBuilder << -1;
+    bool result = UrlUtil::isValidPort(numBuilder.str());
+    ASSERT_FALSE(result);
+}
+
+TEST(IsValidPort, ZeroPort) {
+    std::ostringstream numBuilder;
+    numBuilder << 0;
+    bool result = UrlUtil::isValidPort(numBuilder.str());
+    ASSERT_FALSE(result);
+}
+
+TEST(IsValidPort, PortTooLarge) {
+    std::ostringstream numBuilder;
+    numBuilder << 65536;
+    bool result = UrlUtil::isValidPort(numBuilder.str());
+    ASSERT_FALSE(result);
+}
+
+TEST(IsValidPort, AllValidPorts) {
+    for (int i = 1; i < (1 << 16); i++) {
+        bool result = UrlUtil::isValidPort(std::to_string(i));
+        ASSERT_TRUE(result);
+        if (HasFailure()) {
+            break;
+        }
+    }
+}
+
+TEST(ValidityChecker, ValidWithNoPort) {
+    const std::string url = "http://www.tamu.edu/";
+    const int result = UrlUtil::testUrlValidity(url);
+    ASSERT_EQ(result, VALID_URL);
 }
